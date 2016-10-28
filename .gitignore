@@ -1,3 +1,11 @@
+# PNGs
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
