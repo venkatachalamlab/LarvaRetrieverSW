@@ -10,7 +10,7 @@ import time
 #
 class fsSerial:
     """Serial class for generic serial device."""
-    
+
     WaitTimeout = 3
     portName = ""
 
@@ -25,7 +25,7 @@ class fsSerial:
 
     def close(self):
         self.ser.close()
-        
+
     # Retrieve any waiting data on the port
     def getSerOutput(self):
         #print "GSO:"
@@ -88,3 +88,58 @@ class fsSerial:
         self.ser.flush()
         return self.getSerOutput()
 
+def listAvailablePorts():
+    """Lists serial ports"""
+
+    if sys.platform.startswith('win'):
+        ports = ['COM' + str(i + 1) for i in range(64)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this is to exclude your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+def findDispenser():
+    portList = listAvailablePorts()
+    for port in portList:
+        s = fsSerial(port)
+        s.sendCmd('V')
+        time.sleep(0.25)
+        r=s.getSerOutput()
+        if r.startswith("  V"):
+            #print "Port:", port, "is first dispenser found"
+            dispenser = s
+            dispenser.ser.flushInput()
+            return dispenser
+        s.ser.flushInput()
+        s.ser.flushOutput()
+        s.close()
+    return None
+
+def findSmoothie():
+    portList = listAvailablePorts()
+    for port in portList:
+        s = fsSerial(port)
+        r = s.sendCmdGetReply('version\n')
+        #print "Reply: ", r
+        if r.startswith("Build version:"):
+            #print "Port:", port, "is first Smoothie found"
+            smoothie = s
+            smoothie.ser.flushInput()
+            return smoothie
+        s.ser.flushInput()
+        s.ser.flushOutput()
+        s.close()
+    return None
