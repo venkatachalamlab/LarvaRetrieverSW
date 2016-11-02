@@ -36,6 +36,7 @@ colorList = [ (255, 0, 0),
 
 zHeight = -28
 transitSpeed = 1000
+homographyFile = "homography.npy"
 
 ### Home robot, set to absolute coords
 ##robot.sendSyncCmd("G28\n")
@@ -108,6 +109,8 @@ print "Circle points in image:", circlePointsImage
 # At this point, we should have our two arrays, and can create a homography
 h, status = cv2.findHomography(circlePointsImage, circlePointsRobot)
 print h
+
+np.save(homographyFile, h)
 
 # Make a scaled copy to display
 scaled = cv2.resize(img, (2592/4, 1944/4))

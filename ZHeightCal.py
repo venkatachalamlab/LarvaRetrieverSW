@@ -18,15 +18,17 @@ import numpy as np
 
 # Configuration parameters
 
-testPoints = [ np.array([50.0, 50.0]),
-               np.array([150.0, 50.0]),
-               np.array([50.0, 150.0]),
-               np.array([150.0, 150.0]) ]
+testPoints = np.array([ [50.0, 50.0],
+               [150.0, 50.0],
+               [50.0, 150.0],
+               [150.0, 150.0]])
 
 startZHeight = -10.0
 zIncrement = 0.25
 zExtents = -12.0
 transitSpeed = 1000
+
+zHeightMapFile = "zHeightMap.npy"
 
 robot = fsSerial.findSmoothie()
 
@@ -48,7 +50,10 @@ if p < 35.0:
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
 
-for pt in testPoints:
+measuredHeights = np.zeros((len(testPoints), 3))
+
+for x in range(len(testPoints)):
+    pt = testPoints[x]
     print "Point: X{0} Y{1}".format(pt[0], pt[1])
     currentZ = startZHeight
     seek = True
@@ -64,6 +69,7 @@ for pt in testPoints:
             print "Found surface at [ {0}, {1}, {2} ].".format(pt[0],
                                                                pt[1],
                                                                currentZ)
+            measuredHeights[x] = np.array([pt[0], pt[1], currentZ])
             seek = False
         else:
             currentZ = currentZ - zIncrement
@@ -72,7 +78,10 @@ for pt in testPoints:
                 seek = False
     robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, startZHeight))  
 
+print measuredHeights
 
+np.save(zHeightMapFile, measuredHeights)
+                           
 robot.sendSyncCmd("M45\n")
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("M84\n")
