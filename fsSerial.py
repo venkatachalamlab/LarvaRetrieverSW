@@ -114,7 +114,7 @@ def listAvailablePorts():
 def findDispenser():
     portList = listAvailablePorts()
     for port in portList:
-        s = fsSerial(port)
+        s = fsSerial(port, 9600)
         s.sendCmd('V')
         time.sleep(0.25)
         r=s.getSerOutput()
@@ -131,7 +131,7 @@ def findDispenser():
 def findSmoothie():
     portList = listAvailablePorts()
     for port in portList:
-        s = fsSerial(port)
+        s = fsSerial(port, 115200)
         r = s.sendCmdGetReply('version\n')
         #print "Reply: ", r
         if r.startswith("Build version:"):

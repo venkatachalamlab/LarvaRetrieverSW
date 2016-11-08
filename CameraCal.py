@@ -38,29 +38,28 @@ zHeight = -28
 transitSpeed = 1000
 homographyFile = "homography.npy"
 
-### Home robot, set to absolute coords
-##robot.sendSyncCmd("G28\n")
-##robot.sendSyncCmd("G90\n")
-##
-### Move to first corner of calibration image
-##robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[0][0], cornerPoints[0][1]))
-##robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
-##robot.sendSyncCmd("G04 P100\n")
-##print "Place corner #1 of calibration pattern under tip, and press [enter] to continue."
-##t = raw_input()
-##
-### Move to second corner of calibration image
-##robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight+10))
-##robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[1][0], cornerPoints[1][1]))
-##robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
-##robot.sendSyncCmd("G04 P100\n")
-##print "Place corner #2 of calibration pattern under tip, and press [enter] to continue."
-##t = raw_input()
-##
-### Now image has been placed. Get robot out of the camera's view
-##robot.sendSyncCmd("G28\n")
-##robot.sendSyncCmd("M84\n")
+# Home robot, set to absolute coords
+robot.sendSyncCmd("G28\n")
+robot.sendSyncCmd("G90\n")
 
+# Move to first corner of calibration image
+robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[0][0], cornerPoints[0][1]))
+robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
+robot.sendSyncCmd("G04 P100\n")
+print "Place corner #1 of calibration pattern under tip, and press [enter] to continue."
+t = raw_input()
+
+# Move to second corner of calibration image
+robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight+10))
+robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[1][0], cornerPoints[1][1]))
+robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
+robot.sendSyncCmd("G04 P100\n")
+print "Place corner #2 of calibration pattern under tip, and press [enter] to continue."
+t = raw_input()
+
+# Now image has been placed. Get robot out of the camera's view
+robot.sendSyncCmd("G28\n")
+robot.sendSyncCmd("M84\n")
 # Done with the robot, for now.
 robot.close()
 

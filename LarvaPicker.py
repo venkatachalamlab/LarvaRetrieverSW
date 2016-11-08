@@ -26,38 +26,79 @@ if ( len(sys.argv) != 2 ) or ( int(sys.argv[1]) < 1 ) or ( int(sys.argv[1]) > 3 
     print "Usage: {0} N".format(sys.argv[0])
     print "Where N is the size/age of the larvae -- 1, 2, or 3"
     exit()
-    
+
 # Configuration parameters
 
 COMPort = "COM3"
-homographyFile = ""
+homographyFile = "homography.npy"
+zHeightMapFile = "zHeightMap.npy"
 imageFile = "TestImage.png"
 instar = int(sys.argv[1])
 
 ZTravel = -10.
-ZPickups = [ -22.1, -21.5, -20.9 ]
-ZDropoffs = [ -21.9, -21.6, -21.3 ]
+ZPickups = [0.5, 1.1, 1.7]
+ZDropoffs = [0.7, 1.2, 1.7]
+
+# Import homography
+h = np.load(homographyFile)
+hInv = np.linalg.inv(h)
+
+# Import z height points and find plane equation for agar bed
+measuredHeights = np.load(zHeightMapFile)
+
+# Equation of a plane is a*x + b*y * c*z = d
+
+# These three points are in the plane
+p1 = measuredHeights[0]
+p2 = measuredHeights[1]
+p3 = measuredHeights[2]
+
+# Therefore, these two vectors are in the plane
+v1 = p3 - p1
+v2 = p2 - p1
+
+# The cross product is a vector normal to the plane
+cp = np.cross(v1, v2)
+a, b, c = cp
+
+# This evaluates a * x3 + b * y3 + c * z3 which equals d
+d = np.dot(cp, p3)
+
+print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
+
+
+# Define a few functions. Program continues below.
+
+# To calculate the Z height of the agar bed at any X/Y coordinate:
+# Use plane equation, solve for Z.
+# z = (d - a*x - b*y)/c
+def getZHeight(pt, a, b, c, d):
+    x = pt[0]
+    y = pt[1]
+    if c == 0:
+        return None
+    return (d - a*x - b*y)/c
 
 # Function to reposition larvae given:
 #   source (np array, X & Y coordinates)
 #   dest   (np array, X & Y coordinates)
 #   instar (integer -- 1, 2 or 3)
-def pickLarva(source, dest, instar):
+def pickLarva(source, dest, z, instar):
     global ZTravel, ZPickups, ZDropoffs, robot
     assert (type(source) is numpy.ndarray and source.shape == (2L,) ), "source should be numpy array of shape (2L,)"
     assert (type(dest) is numpy.ndarray and dest.shape == (2L,) ), "dest should be numpy array of shape (2L,)"
     assert (instar == 1 or instar == 2 or instar == 3), "instar should be 1, 2 or 3"
-    
+
     robot.sendSyncCmd("G01 F12000\n")
     robot.sendSyncCmd("G01 X{0} Y{1}\n".format(source[0], source[1]))
-    robot.sendSyncCmd("G01 Z{0}\n".format(ZPickups[instar-1]))
+    robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]))
     robot.sendSyncCmd("G04 P100\n")
     robot.sendSyncCmd("M42\n")
-    robot.sendSyncCmd("G01 Z{0}\n".format(ZPickups[instar-1]+0.1))
+    robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]+0.1))
     robot.sendSyncCmd("G04 P250\n")
     robot.sendSyncCmd("G01 F500 Z{0}\n".format(ZTravel))
     robot.sendSyncCmd("G01 F12000 X{0} Y{1}\n".format(dest[0], dest[1]))
-    robot.sendSyncCmd("G01 F4000 Z{0}\n".format(ZDropoffs[instar-1]))
+    robot.sendSyncCmd("G01 F4000 Z{0}\n".format(z+ZDropoffs[instar-1]))
     robot.sendSyncCmd("M106\n")
     robot.sendSyncCmd("G04 P15\n")
     robot.sendSyncCmd("M43\n")
@@ -65,12 +106,16 @@ def pickLarva(source, dest, instar):
     robot.sendSyncCmd("G04 P1000\n")
     robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel))
 
-
 def parseImage(img):
     larvaList = []
     return larvaList
 
-robot = fsSerial.fsSerial(COMPort, baud = 115200)
+robot = fsSerial.findSmoothie()
+
+if robot is None:
+    print "Couldn't find SmoothieBoard. Exiting."
+    exit()
+
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
 
@@ -84,15 +129,19 @@ while True:
             latestImage = cv2.imread(imageFile)
             # Parse image and move larvae (if necessary)
             larvaList = parseImage(latestImage)
-            for larva in larvaList:
-                pickLarva(larva[0], larva[1], instar)
+            n = len(larvaList)
+            larvaListRobot = cv2.perspectiveTransform(larvaList.reshape((n, 1, 2)), h).reshape((n, 2))
+            for larva in larvaListRobot:
+                zHeightAtLarva = getZHeight(larva, a, b, c, d)
+                pickLarva(larva[0], larva[1], zHeightAtLarva, instar)
             robot.sendSyncCmd("G01 F12000 X0 Y0\n")
             robot.sendSyncCmd("M84\n")
         time.sleep(0.25)
     except KeyboardInterrupt:
-        print "Exiting!"
-        time.sleep(3)
-        exit()
-        
+        break
 
+robot.sendSyncCmd("G28\n")
+robot.sendSyncCmd("M84\n")
 robot.close()
+print "Exiting!"
+time.sleep(3)

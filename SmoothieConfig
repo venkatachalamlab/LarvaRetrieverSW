@@ -10,9 +10,12 @@ mm_max_arc_error                             0.01             # these segments. 
 
 # Arm solution configuration : Cartesian robot. Translates mm positions into stepper positions
 # 20 tooth pulley, 2mm belt pitch, 400 steps per rotation, 1/16 microstepping
-alpha_steps_per_mm                           160               # Steps per mm for alpha stepper
-beta_steps_per_mm                            160               # Steps per mm for beta stepper
-# 1/10.4" per revolution, 200 steps, 1/16 microstepping = 1/2.4423 rev/mm * 200 steps / rev *16 microsteps/step = 7815.384 steps/mm
+# Theoretical steps/mm => 160. But practically, directed the robot to move 100 in X and Y and measured distance.
+# X measured: 101.6, so steps per mm is 1.6% too high. New steps/mm = 157.5
+# Y measured: 101.4, so steps per mm is 1.4% too high. New steps/mm = 157.8
+alpha_steps_per_mm                           157.5               # Steps per mm for alpha stepper
+beta_steps_per_mm                            157.8               # Steps per mm for beta stepper
+# 1/10.4" per revolution, 200 steps, 1/16 microstepping => 1/2.4423 rev/mm * 200 steps / rev *16 microsteps/step = 1310.236 steps/mm
 gamma_steps_per_mm                           1310.236          # Steps per mm for gamma stepper
 
 # Planner module configuration : Look-ahead and acceleration configuration
@@ -32,7 +35,7 @@ base_stepping_frequency                      100000           # Base frequency f
 # Cartesian axis speed limits
 x_axis_max_speed                             20000            # mm/min
 y_axis_max_speed                             20000            # mm/min
-z_axis_max_speed                             10000             # mm/min
+z_axis_max_speed                             1000             # mm/min
 
 # Stepper module pins ( ports, and pin numbers, appending "!" to the number will invert a pin )
 alpha_step_pin                               2.0              # Pin for alpha stepper step signal
@@ -50,8 +53,8 @@ beta_max_rate                                30000.0          # mm/min
 gamma_step_pin                               2.2              # Pin for gamma stepper step signal
 gamma_dir_pin                                0.20             # Pin for gamma stepper direction
 gamma_en_pin                                 0.19             # Pin for gamma enable
-gamma_current                                0.35             # Z stepper motor current
-gamma_max_rate                               10000.0          # mm/min
+gamma_current                                0.40             # Z stepper motor current
+gamma_max_rate                               1000.0          # mm/min
 
 # Serial communications configuration ( baud rate default to 9600 if undefined )
 uart0.baud_rate                              115200           # Baud rate for the default hardware serial port
@@ -110,13 +113,15 @@ endstops_enable                              true             # the endstop modu
 alpha_min_endstop                            2.11^            # (previously 1.24^) add a ! to invert if endstop is NO connected to ground
 alpha_max_endstop                            nc				  # (previously 1.25^) NOTE set to nc if this is not installed
 alpha_homing_direction                       home_to_min      # or set to home_to_max and set alpha_max
-alpha_min                                    0                # this gets loaded after homing when home_to_min is set
+alpha_min                                    -2                # this gets loaded after homing when home_to_min is set
 alpha_max                                    200              # this gets loaded after homing when home_to_max is set
+
 beta_min_endstop                             3.26^            # 1.26^
 beta_max_endstop                             nc               # 1.27^
 beta_homing_direction                        home_to_min      #
-beta_min                                     0                #
+beta_min                                     -2               #
 beta_max                                     200              #
+
 gamma_min_endstop                            nc            # 1.28^
 gamma_max_endstop                            1.28^            # 1.29^
 gamma_homing_direction                       home_to_max      #
