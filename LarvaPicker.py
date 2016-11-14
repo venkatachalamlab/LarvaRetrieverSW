@@ -28,13 +28,15 @@ if ( len(sys.argv) != 2 ) or ( int(sys.argv[1]) < 1 ) or ( int(sys.argv[1]) > 3 
     exit()
 
 # Configuration parameters
-
-COMPort = "COM3"
 homographyFile = "homography.npy"
 zHeightMapFile = "zHeightMap.npy"
 imageFile = "TestImage.png"
 instar = int(sys.argv[1])
 
+margin = 50 # px
+centerSize = 250 # px
+
+# Dimensions and distances in millimeters
 ZTravel = -10.
 ZPickups = [0.5, 1.1, 1.7]
 ZDropoffs = [0.7, 1.2, 1.7]
@@ -66,6 +68,22 @@ d = np.dot(cp, p3)
 
 print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
 
+
+# Create image masks. First is for finding larva in perimeter.
+# Second is for finding space near the middle to replace larvae.
+
+# Read in the image to get the size.
+sampleImage = cv2.imread(imageFile, 0)
+perimeterMask = np.zeros(sampleImage.shape, int)
+centerMask = np.zeros(sampleImage.shape, int)
+(h, w) = sampleImage.shape
+perimeterMask[ 0:h, (w-h)/2:(w+h)/2 ] = 1
+perimeterMask[ margin:h-margin, (w-h)/2+margin:(w+h)/2-margin ] = 0
+perimeterIdx = (perimeterMask == 0)
+
+centerMask[ (h-centerSize)/2:(h+centerSize)/2,
+            (w-centerSize)/2:(w+centerSize)/2 ] = 1
+centerIdx = (centerMask == 0)
 
 # Define a few functions. Program continues below.
 
@@ -108,6 +126,8 @@ def pickLarva(source, dest, z, instar):
 
 def parseImage(img):
     larvaList = []
+    # img is a masked image where the background
+    # is black and larvae are white
     return larvaList
 
 robot = fsSerial.findSmoothie()
@@ -125,10 +145,14 @@ while True:
     try:
         # Check file time
         if ( os.path.getmtime(imageFile) != prevTime ):
-            # Load image from file
-            latestImage = cv2.imread(imageFile)
+            # Load image from file as grayscale
+            perimImage = cv2.imread(imageFile,0 )
+            centerImage = latestImage.copy()
+            # Apply masks
+            perimImage[perimeterIdx] = 0
+            centerImage[centerIdx] = 0
             # Parse image and move larvae (if necessary)
-            larvaList = parseImage(latestImage)
+            larvaList = parseImage(perimImage)
             n = len(larvaList)
             larvaListRobot = cv2.perspectiveTransform(larvaList.reshape((n, 1, 2)), h).reshape((n, 2))
             for larva in larvaListRobot:

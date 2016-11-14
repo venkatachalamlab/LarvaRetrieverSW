@@ -1,5 +1,6 @@
-# PNGs
+# Images
 *.png
+*.jpg
 
 # Python
 __pycache__/
