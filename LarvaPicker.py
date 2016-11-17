@@ -31,6 +31,7 @@ if ( len(sys.argv) != 2 ) or ( int(sys.argv[1]) < 1 ) or ( int(sys.argv[1]) > 3 
 homographyFile = "homography.npy"
 zHeightMapFile = "zHeightMap.npy"
 imageFile = "TestImage.png"
+
 instar = int(sys.argv[1])
 
 margin = 50 # px
@@ -67,7 +68,6 @@ a, b, c = cp
 d = np.dot(cp, p3)
 
 print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
-
 
 # Create image masks. First is for finding larva in perimeter.
 # Second is for finding space near the middle to replace larvae.
@@ -126,8 +126,22 @@ def pickLarva(source, dest, z, instar):
 
 def parseImage(img):
     larvaList = []
+    kernel = np.array([[0, 1, 0],[1, 1, 1],[0, 1, 0]], dtype=uint8)
     # img is a masked image where the background
     # is black and larvae are white
+    invImg = 255-img
+    at = cv2.adaptiveThreshold(invImg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 15, 25)
+    # Erode, then dilate to remove noise
+    erodeImg = cv2.erode(at, kernel)
+    clean = cv2.dilate()
+    # Now find contours
+    contours, h = cv2.findContours(clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for c in contours:
+            mmnts = cv2.moments(c)
+            if ( 3 < mmnts['m00'] < 40 ):
+                # Center of contour is m10/m00, m01/m00
+                larvaList.append( np.array([ int(mmnts['m10'] / mmnts['m00'] ), int( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
+
     return larvaList
 
 robot = fsSerial.findSmoothie()
