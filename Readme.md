@@ -12,8 +12,10 @@ Optional:
 
 Usage:
 
-CameraCal.py   ---
+Print "CalibrationPattern.pdf" and ensure that it measures correctly. Cut out square.
 
-ZHeighCal.py   ---
+CameraCal.py   --- with no gel in place, run this program and follow directions on screen.
 
-LarvaPicker.py ---
+ZHeightCal.py  --- with gel in place, and the air line connected and turned on, run this program.
+
+LarvaPicker.py --- run this from a command prompt (cd into the directory containing the script): LarvaPicker.py [n] where n is the size instar you are using (1, 2 or 3).
