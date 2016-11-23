@@ -18,15 +18,15 @@ import numpy as np
 
 # Configuration parameters
 
-testPoints = np.array([ [50.0, 50.0],
-               [150.0, 50.0],
-               [50.0, 150.0],
-               [150.0, 150.0]])
+testPoints = np.array([ [20., 10.],
+               [210., 10.],
+               [210., 200.],
+               [20., 200.0]], float)
 
-startZHeight = -10.0
-zIncrement = 0.25
-zExtents = -12.0
-transitSpeed = 1000
+startZHeight = -20.0
+zIncrement = 0.1
+zExtents = -27.0
+transitSpeed = 2000
 
 zHeightMapFile = "zHeightMap.npy"
 
@@ -42,7 +42,7 @@ time.sleep(1)
 pString = robot.sendCmdGetReply("M105\n")
 p = float(pString.split(' ')[1].split(':')[1])
 if p < 35.0:
-    print "Low pressure reading. Is the air on?"
+    print "Low pressure reading (", p, "). Is the air on?"
     robot.sendSyncCmd("M45\n")
     robot.close()
     exit()
@@ -70,20 +70,26 @@ for x in range(len(testPoints)):
                                                                pt[1],
                                                                currentZ)
             measuredHeights[x] = np.array([pt[0], pt[1], currentZ])
+            startZHeight = currentZ + 2.0
             seek = False
         else:
             currentZ = currentZ - zIncrement
             if ( currentZ < zExtents ):
                 print "No surface found at X{0} Y{1}".format(pt[0], pt[1])
+                measuredHeights[x] = np.array([pt[0], pt[1], currentZ+zIncrement])
                 seek = False
-    robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, startZHeight))  
+    robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, startZHeight))
 
-print measuredHeights
-
-np.save(zHeightMapFile, measuredHeights)
-                           
 robot.sendSyncCmd("M45\n")
 robot.sendSyncCmd("G28\n")
-robot.sendSyncCmd("M84\n")
+robot.sendSyncCmd("M18 Z0\n")
 
 robot.close()
+
+print "Measured heights:\n"
+print measuredHeights
+
+print "Save new Z heights to file (", zHeightMapFile, ")? [Y/n]"
+t = raw_input()
+if (t == 'y') or (t == "Y") or (t == ""):
+    np.save(zHeightMapFile, measuredHeights)

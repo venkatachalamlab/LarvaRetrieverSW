@@ -41,13 +41,13 @@ z_axis_max_speed                             1000             # mm/min
 alpha_step_pin                               2.0              # Pin for alpha stepper step signal
 alpha_dir_pin                                0.5              # Pin for alpha stepper direction
 alpha_en_pin                                 0.4              # Pin for alpha enable pin
-alpha_current                                1.0              # X stepper motor current
+alpha_current                                1.25              # X stepper motor current
 alpha_max_rate                               30000.0          # mm/min
 
 beta_step_pin                                2.1              # Pin for beta stepper step signal
 beta_dir_pin                                 0.11             # Pin for beta stepper direction
 beta_en_pin                                  0.10             # Pin for beta enable
-beta_current                                 1.0              # Y stepper motor current
+beta_current                                 1.25              # Y stepper motor current
 beta_max_rate                                30000.0          # mm/min
 
 gamma_step_pin                               2.2              # Pin for gamma stepper step signal
@@ -113,13 +113,13 @@ endstops_enable                              true             # the endstop modu
 alpha_min_endstop                            2.11^            # (previously 1.24^) add a ! to invert if endstop is NO connected to ground
 alpha_max_endstop                            nc				  # (previously 1.25^) NOTE set to nc if this is not installed
 alpha_homing_direction                       home_to_min      # or set to home_to_max and set alpha_max
-alpha_min                                    -2                # this gets loaded after homing when home_to_min is set
+alpha_min                                    -3                # this gets loaded after homing when home_to_min is set
 alpha_max                                    200              # this gets loaded after homing when home_to_max is set
 
 beta_min_endstop                             3.26^            # 1.26^
 beta_max_endstop                             nc               # 1.27^
 beta_homing_direction                        home_to_min      #
-beta_min                                     -2               #
+beta_min                                     -3               #
 beta_max                                     200              #
 
 gamma_min_endstop                            nc            # 1.28^
@@ -137,15 +137,15 @@ alpha_limit_enable                          true             # set to true to en
 beta_limit_enable                           true             # set to true to enable Y min and max limit switches
 gamma_limit_enable                          true             # set to true to enable Z min and max limit switches
 
-alpha_fast_homing_rate_mm_s                  100               # feedrates in mm/second
-beta_fast_homing_rate_mm_s                   100               # "
+alpha_fast_homing_rate_mm_s                  80               # feedrates in mm/second
+beta_fast_homing_rate_mm_s                   80               # "
 gamma_fast_homing_rate_mm_s                  40                # "
-alpha_slow_homing_rate_mm_s                  50               # "
-beta_slow_homing_rate_mm_s                   50               # "
+alpha_slow_homing_rate_mm_s                  20               # "
+beta_slow_homing_rate_mm_s                   20               # "
 gamma_slow_homing_rate_mm_s                  20                # "
 
-alpha_homing_retract_mm                      2                # distance in mm
-beta_homing_retract_mm                       2                # "
+alpha_homing_retract_mm                      5                # distance in mm
+beta_homing_retract_mm                       5                # "
 gamma_homing_retract_mm                      1                # "
 
 endstop_debounce_count                       100              # uncomment if you get noise on your endstops, default is 100

@@ -24,18 +24,18 @@ if robot is None:
 cornerPoints = [ np.array([50.0, 50.0]),
                np.array([200.0, 200.0]) ]
 
-circlePointsRobot = np.array( [[75.0, 75.0],
-                              [150.0, 100.0],
-                              [60.0, 175.0],
-                              [175.0, 190.0]])
+circlePointsRobot = np.array( [[85.0, 65.0],
+                              [160.0, 90.0],
+                              [70.0, 165.0],
+                              [185.0, 180.0]])
 
 colorList = [ (255, 0, 0),
               (0, 255, 0),
               (0, 0, 255),
-              (255, 255, 255) ]
+              (255, 255, 0) ]
 
-zHeight = -28
-transitSpeed = 1000
+zHeight = -27.5
+transitSpeed = 2000
 homographyFile = "homography.npy"
 
 # Home robot, set to absolute coords
@@ -59,26 +59,36 @@ t = raw_input()
 
 # Now image has been placed. Get robot out of the camera's view
 robot.sendSyncCmd("G28\n")
-robot.sendSyncCmd("M84\n")
+robot.sendSyncCmd("M18 Z0\n")
+
 # Done with the robot, for now.
 robot.close()
 
+print "Robot closed. Opening camera."
+
 # Open the camera
-webcam = cv2.VideoCapture(2)
+# May need to edit the index to match your system, since it depends
+# on how many cameras there are and in what order they enumerate.
+webcam = cv2.VideoCapture(0)
+
+print "Camera open, setting params."
 
 # Set the w/h
 webcam.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 2592)
 webcam.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 1944)
 
+print "Params set, grabbing image."
+
 # Grab an image and flip it around
 res, img = webcam.read()
-img = cv2.flip(img, -1)
+
+webcam.release()
 
 # Find circles
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-circles = cv2.HoughCircles(gray, cv2.cv.CV_HOUGH_GRADIENT, 1.5, 100)
+circles = cv2.HoughCircles(gray, cv2.cv.CV_HOUGH_GRADIENT, 1.4, 100,
+                           minRadius=50, maxRadius=100)
 
-cv2.namedWindow("Calibration")
 
 circlePointsImage = np.zeros((4, 2))
 
@@ -88,7 +98,7 @@ else:
     icircles = np.round(circles[0, :]).astype("int")
     c = circles.astype(float)[0]
     print "Circles found:", c
-    # Sort the circle coordinates 
+    # Sort the circle coordinates
     s = np.argsort(c, 0)
     # We're interested in the y coords, which is the second column
     sortList = s[:,1]
@@ -101,21 +111,24 @@ else:
         circlePointsImage[x] = c[sortList[x]][0:2]
         # While we're at it, draw the circles on the original image
         cv2.circle(img, (icircles[sortList[x]][0], icircles[sortList[x]][1]),
-                   icircles[sortList[x]][2], colorList[x], 4)        
+                   icircles[sortList[x]][2], colorList[x%4], 4)
 
-print "Circle points in image:", circlePointsImage
+print "Circle points in image:\n", circlePointsImage
+
+# Make a scaled copy to display
+scaled = cv2.resize(img, (2592/4, 1944/4))
+cv2.namedWindow("Calibration")
+cv2.imshow("Calibration", scaled)
+cv2.waitKey()
+
+cv2.destroyAllWindows()
 
 # At this point, we should have our two arrays, and can create a homography
 h, status = cv2.findHomography(circlePointsImage, circlePointsRobot)
 print h
 
-np.save(homographyFile, h)
-
-# Make a scaled copy to display
-scaled = cv2.resize(img, (2592/4, 1944/4))
-cv2.imshow("Calibration", scaled)
-cv2.waitKey()
-
-webcam.release()
-cv2.destroyAllWindows()
-
+print "Save new homography to file (", homographyFile, ")? [Y/n]"
+t = raw_input()
+if (t == 'y') or (t == "Y") or (t == ""):
+    np.save(homographyFile, h)
+    print "Saved."

@@ -6,6 +6,7 @@ import glob
 import cv2
 import numpy as np
 import sys
+import time
 
 # General structure of this program:
 #
@@ -22,29 +23,35 @@ import sys
 #           iii. Move robot out of view
 # Ongoing - listen for interrupt; quit cleanly.
 
-if ( len(sys.argv) != 2 ) or ( int(sys.argv[1]) < 1 ) or ( int(sys.argv[1]) > 3 ):
-    print "Usage: {0} N".format(sys.argv[0])
-    print "Where N is the size/age of the larvae -- 1, 2, or 3"
-    exit()
+#if ( len(sys.argv) != 2 ) or ( int(sys.argv[1]) < 1 ) or ( int(sys.argv[1]) > 3 ):
+#    print "Usage: {0} N".format(sys.argv[0])
+#    print "Where N is the size/age of the larvae -- 1, 2, or 3"
+#    exit()
 
 # Configuration parameters
 homographyFile = "homography.npy"
 zHeightMapFile = "zHeightMap.npy"
-imageFile = "TestImage.png"
+imageFile = "TestImg.png"
 
-instar = int(sys.argv[1])
+#instar = int(sys.argv[1])
+instar = 3
 
-margin = 50 # px
-centerSize = 250 # px
+margin = 150 # px
+centerSize = 450 # px
+
+# Larva area ranges, in px
+larvaRanges = np.array([ [25, 110],
+                         [75, 150],
+                         [100, 700]])
 
 # Dimensions and distances in millimeters
 ZTravel = -10.
-ZPickups = [0.5, 1.1, 1.7]
-ZDropoffs = [0.7, 1.2, 1.7]
+ZPickups = [0.5, 0.5, 0.5]
+ZDropoffs = [0.7, 1.0, 1.3]
 
 # Import homography
-h = np.load(homographyFile)
-hInv = np.linalg.inv(h)
+H = np.load(homographyFile)
+HInv = np.linalg.inv(H)
 
 # Import z height points and find plane equation for agar bed
 measuredHeights = np.load(zHeightMapFile)
@@ -103,46 +110,74 @@ def getZHeight(pt, a, b, c, d):
 #   instar (integer -- 1, 2 or 3)
 def pickLarva(source, dest, z, instar):
     global ZTravel, ZPickups, ZDropoffs, robot
-    assert (type(source) is numpy.ndarray and source.shape == (2L,) ), "source should be numpy array of shape (2L,)"
-    assert (type(dest) is numpy.ndarray and dest.shape == (2L,) ), "dest should be numpy array of shape (2L,)"
+    assert (type(source) is np.ndarray and source.shape == (2L,) ), "source should be numpy array of shape (2L,)"
+    assert (type(dest) is np.ndarray and dest.shape == (2L,) ), "dest should be numpy array of shape (2L,)"
     assert (instar == 1 or instar == 2 or instar == 3), "instar should be 1, 2 or 3"
 
-    robot.sendSyncCmd("G01 F12000\n")
+    robot.sendSyncCmd("G01 F5000\n")
     robot.sendSyncCmd("G01 X{0} Y{1}\n".format(source[0], source[1]))
     robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]))
     robot.sendSyncCmd("G04 P100\n")
-    robot.sendSyncCmd("M42\n")
+    robot.sendSyncCmd("M44\n")
     robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]+0.1))
     robot.sendSyncCmd("G04 P250\n")
     robot.sendSyncCmd("G01 F500 Z{0}\n".format(ZTravel))
-    robot.sendSyncCmd("G01 F12000 X{0} Y{1}\n".format(dest[0], dest[1]))
-    robot.sendSyncCmd("G01 F4000 Z{0}\n".format(z+ZDropoffs[instar-1]))
+    robot.sendSyncCmd("G01 F5000 X{0} Y{1}\n".format(dest[0], dest[1]))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(z+ZDropoffs[instar-1]))
     robot.sendSyncCmd("M106\n")
-    robot.sendSyncCmd("G04 P15\n")
-    robot.sendSyncCmd("M43\n")
+    robot.sendSyncCmd("G04 P5\n")
     robot.sendSyncCmd("M107\n")
+    robot.sendSyncCmd("M45\n")
     robot.sendSyncCmd("G04 P1000\n")
     robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel))
 
 def parseImage(img):
     larvaList = []
-    kernel = np.array([[0, 1, 0],[1, 1, 1],[0, 1, 0]], dtype=uint8)
+    kernel = np.array([[0, 1, 0],[1, 1, 1],[0, 1, 0]], dtype=np.uint8)
     # img is a masked image where the background
     # is black and larvae are white
     invImg = 255-img
-    at = cv2.adaptiveThreshold(invImg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 15, 25)
+    at = cv2.adaptiveThreshold(invImg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 55, 25)
+    #cv2.imwrite("threshold.png", at)
     # Erode, then dilate to remove noise
     erodeImg = cv2.erode(at, kernel)
-    clean = cv2.dilate()
+    clean = cv2.dilate(erodeImg, kernel)
+    cv2.imwrite("clean.png", erodeImg)
     # Now find contours
     contours, h = cv2.findContours(clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for c in contours:
             mmnts = cv2.moments(c)
-            if ( 3 < mmnts['m00'] < 40 ):
+            print " mmnts['m00']:", mmnts['m00'], " at ", (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00'])
+            if ( larvaRanges[instar-1][0] < mmnts['m00'] < larvaRanges[instar-1][1] ):
                 # Center of contour is m10/m00, m01/m00
-                larvaList.append( np.array([ int(mmnts['m10'] / mmnts['m00'] ), int( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
+                larvaList.append( np.array([ (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
 
     return larvaList
+
+def findSpace(img):
+    global centerSize, w, h
+    destinations = []
+    kernel = np.array([[0, 1, 0],[1, 1, 1],[0, 1, 0]], dtype=np.uint8)
+    # img is a masked image where the background
+    # is black and larvae are white
+    invImg = 255-img
+    at = cv2.adaptiveThreshold(invImg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 55, 25)
+    # Erode, then dilate to remove noise
+    erodeImg = cv2.erode(at, kernel)
+    clean = cv2.dilate(erodeImg, kernel)
+    #cv2.imwrite("clean.png", erodeImg)
+    # Divide center into 50 px (approx. 7mm) squares
+    # If *any* pixel within each square is white, the square is
+    # considered "not empty".
+    # Return a list of the center points of all empty squares.
+    for x in range(centerSize/50):
+        for y in range(centerSize/50):
+            if (not np.any(clean[ (h-centerSize)/2+y*50:(h-centerSize)/2+(y+1)*50,
+                       (w-centerSize)/2+x*50:(w-centerSize)/2+(x+1)*50]) ):
+                destinations.append(np.array([(w-centerSize)/2+x*50+25,
+                                              (h-centerSize)/2+y*50+25], dtype=np.int16))
+            clean[ margin:h-margin, (w-h)/2+margin:(w+h)/2-margin ]
+    return destinations
 
 robot = fsSerial.findSmoothie()
 
@@ -153,27 +188,62 @@ if robot is None:
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
 
+robot.sendSyncCmd("M18 Z0\n")
+
+robot.sendSyncCmd("M44\n")
+time.sleep(1)
+
+pString = robot.sendCmdGetReply("M105\n")
+robot.sendSyncCmd("M45\n")
+p = float(pString.split(' ')[1].split(':')[1])
+if p < 35.0:
+    print "Low pressure reading (", p, "). Is the air on?"
+    robot.close()
+    exit()
+
 prevTime = os.path.getmtime(imageFile)
+
+print "Checking image file time."
 
 while True:
     try:
         # Check file time
         if ( os.path.getmtime(imageFile) != prevTime ):
+            print "Updated @", time.time()
             # Load image from file as grayscale
             perimImage = cv2.imread(imageFile,0 )
-            centerImage = latestImage.copy()
-            # Apply masks
-            perimImage[perimeterIdx] = 0
-            centerImage[centerIdx] = 0
-            # Parse image and move larvae (if necessary)
-            larvaList = parseImage(perimImage)
-            n = len(larvaList)
-            larvaListRobot = cv2.perspectiveTransform(larvaList.reshape((n, 1, 2)), h).reshape((n, 2))
-            for larva in larvaListRobot:
-                zHeightAtLarva = getZHeight(larva, a, b, c, d)
-                pickLarva(larva[0], larva[1], zHeightAtLarva, instar)
-            robot.sendSyncCmd("G01 F12000 X0 Y0\n")
-            robot.sendSyncCmd("M84\n")
+            if perimImage is not None:
+
+                centerImage = perimImage.copy()
+                # Apply masks
+                perimImage[perimeterIdx] = 0
+                centerImage[centerIdx] = 0
+                #cv2.imwrite("mask.png", perimImage)
+                # Parse image and move larvae (if necessary)
+                larvaList = parseImage(perimImage)
+                destList = findSpace(centerImage)
+                if ( len(larvaList) > len(destList) ):
+                    print "Error: more flies than destination squares."
+                    for i in range(len(larvaList)-len(destList)+1):
+                        destList.append(np.array([int(centerImage.shape[1]/2), int(centerImage.shape[0]/2)], float))
+                n = len(larvaList)
+                print "Found", n, "larva."
+                destCount = 0
+                if n > 0:
+                    larvaListRobot = cv2.perspectiveTransform(np.asarray(larvaList, float).reshape((1, n, 2)), H).reshape((n, 2))
+                    destListRobot = cv2.perspectiveTransform(np.asarray(destList, float).reshape((1, len(destList), 2)), H).reshape((len(destList), 2))
+                    for n in range(n):
+                        larva = larvaListRobot[n]
+                        zHeightAtLarva = getZHeight(larva, a, b, c, d)
+                        print "Larva location (image coords):", larvaList[n]
+                        print "Larva location (robot coords):", larva
+                        print "Calculated Z height:", zHeightAtLarva
+                        pickLarva(larva, destListRobot[destCount], zHeightAtLarva, instar)
+                        destCount += 1
+                    robot.sendSyncCmd("G01 F12000 X2 Y2\n")
+                    robot.sendSyncCmd("M18 Z0\n")
+                prevTime = os.path.getmtime(imageFile)
+
         time.sleep(0.25)
     except KeyboardInterrupt:
         break
@@ -181,5 +251,5 @@ while True:
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("M84\n")
 robot.close()
-print "Exiting!"
+print "Exiting! Don't for get to turn off the air!"
 time.sleep(3)
