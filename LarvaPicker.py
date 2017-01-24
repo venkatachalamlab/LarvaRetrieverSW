@@ -8,6 +8,8 @@ import numpy as np
 import sys
 import time
 
+from LPConstants import *
+
 # General structure of this program:
 #
 # 1. Initialize serial port to communicate with SmoothieBoard
@@ -28,26 +30,16 @@ import time
 #    print "Where N is the size/age of the larvae -- 1, 2, or 3"
 #    exit()
 
-# Configuration parameters
-homographyFile = "homography.npy"
-zHeightMapFile = "zHeightMap.npy"
-imageFile = "TestImg.png"
-
 #instar = int(sys.argv[1])
-instar = 3
+instar = 2
 
-margin = 150 # px
-centerSize = 450 # px
-
-# Larva area ranges, in px
-larvaRanges = np.array([ [25, 110],
-                         [75, 150],
-                         [100, 700]])
-
-# Dimensions and distances in millimeters
-ZTravel = -10.
-ZPickups = [0.5, 0.5, 0.5]
-ZDropoffs = [0.7, 1.0, 1.3]
+# Check that files exist
+if ( os.path.isfile(homographyFile) is False ) or \
+   ( os.path.isfile(zHeightMapFile) is False ) or \
+   ( os.path.isfile(imageFile)      is False ):
+    print "Could not file calibration files or image file."
+    print "[", homographyFile, zHeightMapFile, imageFile, "]"
+    exit()
 
 # Import homography
 H = np.load(homographyFile)
@@ -75,6 +67,8 @@ a, b, c = cp
 d = np.dot(cp, p3)
 
 print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
+
+#
 
 # Create image masks. First is for finding larva in perimeter.
 # Second is for finding space near the middle to replace larvae.
@@ -108,28 +102,30 @@ def getZHeight(pt, a, b, c, d):
 #   source (np array, X & Y coordinates)
 #   dest   (np array, X & Y coordinates)
 #   instar (integer -- 1, 2 or 3)
-def pickLarva(source, dest, z, instar):
-    global ZTravel, ZPickups, ZDropoffs, robot
+def pickLarva(source, dest, instar):
+    global ZTravel, ZPickups, ZDropoffs, robot, a, b, c, d
     assert (type(source) is np.ndarray and source.shape == (2L,) ), "source should be numpy array of shape (2L,)"
     assert (type(dest) is np.ndarray and dest.shape == (2L,) ), "dest should be numpy array of shape (2L,)"
     assert (instar == 1 or instar == 2 or instar == 3), "instar should be 1, 2 or 3"
 
-    robot.sendSyncCmd("G01 F5000\n")
+    zHeightAtLarva = getZHeight(source, a, b, c, d)
+    zDropoffHeight = getZHeight(dest, a, b, c, d)
+    robot.sendSyncCmd("G01 F8000\n")
     robot.sendSyncCmd("G01 X{0} Y{1}\n".format(source[0], source[1]))
-    robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]))
+    robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]))
     robot.sendSyncCmd("G04 P100\n")
-    robot.sendSyncCmd("M44\n")
-    robot.sendSyncCmd("G01 Z{0}\n".format(z+ZPickups[instar-1]+0.1))
+    robot.sendSyncCmd("M42\n")
+    robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]+0.1))
     robot.sendSyncCmd("G04 P250\n")
-    robot.sendSyncCmd("G01 F500 Z{0}\n".format(ZTravel))
-    robot.sendSyncCmd("G01 F5000 X{0} Y{1}\n".format(dest[0], dest[1]))
-    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(z+ZDropoffs[instar-1]))
-    robot.sendSyncCmd("M106\n")
-    robot.sendSyncCmd("G04 P5\n")
-    robot.sendSyncCmd("M107\n")
-    robot.sendSyncCmd("M45\n")
-    robot.sendSyncCmd("G04 P1000\n")
-    robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(ZTravel))
+    robot.sendSyncCmd("G01 F8000 X{0} Y{1}\n".format(dest[0], dest[1]))
+    robot.sendSyncCmd("G01 F3000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]))
+    robot.sendSyncCmd("M43\n") # Vacuum off
+    robot.sendSyncCmd("M44\n") # Air on
+    robot.sendSyncCmd("G04 P10\n") # Pause (5ms)
+    robot.sendSyncCmd("G01 F3000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+2))
+    robot.sendSyncCmd("M45\n") # Air off
+    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(ZTravel)) # Return to Z travel height
 
 def parseImage(img):
     larvaList = []
@@ -147,10 +143,11 @@ def parseImage(img):
     contours, h = cv2.findContours(clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for c in contours:
             mmnts = cv2.moments(c)
-            print " mmnts['m00']:", mmnts['m00'], " at ", (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00'])
-            if ( larvaRanges[instar-1][0] < mmnts['m00'] < larvaRanges[instar-1][1] ):
-                # Center of contour is m10/m00, m01/m00
-                larvaList.append( np.array([ (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
+            if ( mmnts['m00'] != 0 ):
+                #print " mmnts['m00']:", mmnts['m00'], " at ", (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00'])
+                if ( larvaRanges[instar-1][0] < mmnts['m00'] < larvaRanges[instar-1][1] ):
+                    # Center of contour is m10/m00, m01/m00
+                    larvaList.append( np.array([ (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
 
     return larvaList
 
@@ -188,16 +185,14 @@ if robot is None:
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
 
-robot.sendSyncCmd("M18 Z0\n")
-
-robot.sendSyncCmd("M44\n")
+robot.sendSyncCmd("M42\n")
 time.sleep(1)
 
 pString = robot.sendCmdGetReply("M105\n")
-robot.sendSyncCmd("M45\n")
+robot.sendSyncCmd("M43\n")
 p = float(pString.split(' ')[1].split(':')[1])
-if p < 35.0:
-    print "Low pressure reading (", p, "). Is the air on?"
+if p < minVacReading:
+    print "Low pressure reading (", p, "). Is the pump on/stopcock open?"
     robot.close()
     exit()
 
@@ -234,14 +229,15 @@ while True:
                     destListRobot = cv2.perspectiveTransform(np.asarray(destList, float).reshape((1, len(destList), 2)), H).reshape((len(destList), 2))
                     for n in range(n):
                         larva = larvaListRobot[n]
-                        zHeightAtLarva = getZHeight(larva, a, b, c, d)
                         print "Larva location (image coords):", larvaList[n]
                         print "Larva location (robot coords):", larva
-                        print "Calculated Z height:", zHeightAtLarva
-                        pickLarva(larva, destListRobot[destCount], zHeightAtLarva, instar)
+                        if ( larva[0] < 0 ) or ( larva[1] < 0 ) or \
+                           ( larva[0] > 250 ) or ( larva[1] > 220 ):
+                            print "Robot coordinate out-of-bounds. Skipping."
+                        else:
+                            pickLarva(larva, destListRobot[destCount], instar)
                         destCount += 1
                     robot.sendSyncCmd("G01 F12000 X2 Y2\n")
-                    robot.sendSyncCmd("M18 Z0\n")
                 prevTime = os.path.getmtime(imageFile)
 
         time.sleep(0.25)

@@ -6,6 +6,9 @@ import sys
 import time
 import cv2
 
+# Prints a message when the given file (imageFile) is updated
+# on disk.
+
 imageFile = "TestImg.png"
 
 prevTime = os.path.getmtime(imageFile)

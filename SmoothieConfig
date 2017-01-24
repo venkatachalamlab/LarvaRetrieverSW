@@ -1,3 +1,7 @@
+# SmoothieBoard config file for larva picker robot.
+# Copyright 2016/2017, FlySorter LLC. See License file for more details.
+#
+
 # NOTE Lines must not exceed 132 characters
 # Robot module configurations : general handling of movement G-codes and slicing into moves
 default_feed_rate                            5000             # Default rate ( mm/minute ) for G1/G2/G3 moves
@@ -84,20 +88,14 @@ temperature_control.hotend.designator        T                #
 #temperature_control.hotend.min_temp         0                # Set minimum temperature - Will prevent heating below if set
 
 
-# Switch module for fan control
-switch.fan.enable                            true             #
-switch.fan.input_on_command                  M106             #
-switch.fan.input_off_command                 M107             #
-switch.fan.output_pin                        2.6              #
-switch.fan.output_type                       digital          # pwm output settable with S parameter in the input_on_comand
-#switch.fan.max_pwm                           255              # set max pwm for the pin default is 255
-
+# Vacuum solenoid
 switch.misc.enable                           true             #
 switch.misc.input_on_command                 M42              #
 switch.misc.input_off_command                M43              #
 switch.misc.output_pin                       2.7              #
 switch.misc.output_type                      digital          # just an on or off pin
 
+# Air solenoid
 switch.misc2.enable                           true             #
 switch.misc2.input_on_command                 M44              #
 switch.misc2.input_off_command                M45              #
@@ -116,7 +114,7 @@ alpha_homing_direction                       home_to_min      # or set to home_t
 alpha_min                                    -3                # this gets loaded after homing when home_to_min is set
 alpha_max                                    200              # this gets loaded after homing when home_to_max is set
 
-beta_min_endstop                             3.26^            # 1.26^
+beta_min_endstop                             1.26^            # 1.26^
 beta_max_endstop                             nc               # 1.27^
 beta_homing_direction                        home_to_min      #
 beta_min                                     -3               #

@@ -4,6 +4,8 @@ import fsSerial
 import time
 import numpy as np
 
+from LPConstants import *
+
 # General structure of this program:
 #
 # 1. Initialize serial port to communicate with SmoothieBoard
@@ -18,16 +20,14 @@ import numpy as np
 
 # Configuration parameters
 
-testPoints = np.array([ [20., 10.],
-               [210., 10.],
-               [210., 200.],
-               [20., 200.0]], float)
+testPoints = np.array([ [40., 10.],
+               [230., 10.],
+               [230., 200.],
+               [40., 200.0]], float)
 
-startZHeight = -20.0
+startZHeight = -15.0
 zIncrement = 0.1
-zExtents = -27.0
-transitSpeed = 2000
-
+transitSpeed = 3000
 zHeightMapFile = "zHeightMap.npy"
 
 robot = fsSerial.findSmoothie()
@@ -36,16 +36,21 @@ if robot is None:
     print "Couldn't find SmoothieBoard. Exiting."
     exit()
 
-robot.sendSyncCmd("M44\n")
+robot.sendSyncCmd("M42\n")
 time.sleep(1)
 
 pString = robot.sendCmdGetReply("M105\n")
 p = float(pString.split(' ')[1].split(':')[1])
-if p < 35.0:
-    print "Low pressure reading (", p, "). Is the air on?"
-    robot.sendSyncCmd("M45\n")
+if p < minVacReading:
+    print "Low pressure reading (", p, "). Is the pump on/stopcock open?"
+    robot.sendSyncCmd("M43\n")
     robot.close()
     exit()
+
+# Set threshold for surface based on reading
+surfaceThreshold = 52.5
+print "Vac reading:", p, "Setting threshold to:", surfaceThreshold
+
 
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
@@ -65,7 +70,7 @@ for x in range(len(testPoints)):
         pString = robot.sendCmdGetReply("M105\n")
         p = float(pString.split(' ')[1].split(':')[1])
         print "-- Pressure reading:", p
-        if ( p > 43.5 ):
+        if ( p > surfaceThreshold ):
             print "Found surface at [ {0}, {1}, {2} ].".format(pt[0],
                                                                pt[1],
                                                                currentZ)
@@ -74,15 +79,15 @@ for x in range(len(testPoints)):
             seek = False
         else:
             currentZ = currentZ - zIncrement
-            if ( currentZ < zExtents ):
+            if ( currentZ < ZExtents ):
                 print "No surface found at X{0} Y{1}".format(pt[0], pt[1])
                 measuredHeights[x] = np.array([pt[0], pt[1], currentZ+zIncrement])
                 seek = False
     robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, startZHeight))
 
-robot.sendSyncCmd("M45\n")
+robot.sendSyncCmd("M43\n")
 robot.sendSyncCmd("G28\n")
-robot.sendSyncCmd("M18 Z0\n")
+robot.sendSyncCmd("M84\n")
 
 robot.close()
 

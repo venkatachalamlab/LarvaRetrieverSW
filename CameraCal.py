@@ -4,6 +4,8 @@ import fsSerial
 import numpy as np
 import cv2
 
+from LPConstants import *
+
 # Outline of camera calibration steps:
 # 0. Use pylon viewer to set exposure, gain, etc.
 # 1. Direct robot to move to 2 points.
@@ -13,7 +15,6 @@ import cv2
 # 4. Detect location of calibration points within image.
 # 5. Create homography transformation from points.
 # 6. Output homography matrix to config file.
-
 
 robot = fsSerial.findSmoothie()
 
@@ -34,9 +35,8 @@ colorList = [ (255, 0, 0),
               (0, 0, 255),
               (255, 255, 0) ]
 
-zHeight = -27.5
-transitSpeed = 2000
-homographyFile = "homography.npy"
+zHeight = ZExtents+0.5
+transitSpeed = 4000
 
 # Home robot, set to absolute coords
 robot.sendSyncCmd("G28\n")
@@ -59,7 +59,7 @@ t = raw_input()
 
 # Now image has been placed. Get robot out of the camera's view
 robot.sendSyncCmd("G28\n")
-robot.sendSyncCmd("M18 Z0\n")
+robot.sendSyncCmd("M84\n")
 
 # Done with the robot, for now.
 robot.close()
@@ -69,7 +69,7 @@ print "Robot closed. Opening camera."
 # Open the camera
 # May need to edit the index to match your system, since it depends
 # on how many cameras there are and in what order they enumerate.
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture(2)
 
 print "Camera open, setting params."
 
