@@ -22,20 +22,20 @@ if robot is None:
     print "Couldn't find SmoothieBoard. Exiting."
     exit()
 
-cornerPoints = [ np.array([50.0, 50.0]),
-               np.array([200.0, 200.0]) ]
+cornerPoints = [ np.array([15.0, 5.0]),
+               np.array([195.0, 205.0]) ]
 
-circlePointsRobot = np.array( [[85.0, 65.0],
-                              [160.0, 90.0],
-                              [70.0, 165.0],
-                              [185.0, 180.0]])
+circlePointsRobot = np.array( [[45.0, 15.0],
+                              [170.0, 25.0],
+                              [185.0, 175.0],
+                              [30.0, 190.0]])
 
 colorList = [ (255, 0, 0),
               (0, 255, 0),
               (0, 0, 255),
               (255, 255, 0) ]
 
-zHeight = ZExtents+0.5
+zHeight = ZExtents+7.5
 transitSpeed = 4000
 
 # Home robot, set to absolute coords
@@ -86,9 +86,9 @@ webcam.release()
 
 # Find circles
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-circles = cv2.HoughCircles(gray, cv2.cv.CV_HOUGH_GRADIENT, 1.4, 100,
-                           minRadius=50, maxRadius=100)
-
+blur = cv2.medianBlur(gray, 5)
+circles = cv2.HoughCircles(blur, cv2.cv.CV_HOUGH_GRADIENT, 1.4, 100,
+                           minRadius=25, maxRadius=75)
 
 circlePointsImage = np.zeros((4, 2))
 

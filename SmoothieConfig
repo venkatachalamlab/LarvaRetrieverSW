@@ -14,11 +14,10 @@ mm_max_arc_error                             0.01             # these segments. 
 
 # Arm solution configuration : Cartesian robot. Translates mm positions into stepper positions
 # 20 tooth pulley, 2mm belt pitch, 400 steps per rotation, 1/16 microstepping
-# Theoretical steps/mm => 160. But practically, directed the robot to move 100 in X and Y and measured distance.
-# X measured: 101.6, so steps per mm is 1.6% too high. New steps/mm = 157.5
-# Y measured: 101.4, so steps per mm is 1.4% too high. New steps/mm = 157.8
-alpha_steps_per_mm                           157.5               # Steps per mm for alpha stepper
-beta_steps_per_mm                            157.8               # Steps per mm for beta stepper
+# Theoretical steps/mm => 160. But practically, after directing the robot to move
+# 100 in X and Y and measuring distance, needs adjustment. Robot traveled too far, so...
+alpha_steps_per_mm                           156.7               # Steps per mm for alpha stepper
+beta_steps_per_mm                            157.0               # Steps per mm for beta stepper
 # 1/10.4" per revolution, 200 steps, 1/16 microstepping => 1/2.4423 rev/mm * 200 steps / rev *16 microsteps/step = 1310.236 steps/mm
 gamma_steps_per_mm                           1310.236          # Steps per mm for gamma stepper
 
@@ -58,7 +57,7 @@ gamma_step_pin                               2.2              # Pin for gamma st
 gamma_dir_pin                                0.20             # Pin for gamma stepper direction
 gamma_en_pin                                 0.19             # Pin for gamma enable
 gamma_current                                0.40             # Z stepper motor current
-gamma_max_rate                               1000.0          # mm/min
+gamma_max_rate                               5000.0          # mm/min
 
 # Serial communications configuration ( baud rate default to 9600 if undefined )
 uart0.baud_rate                              115200           # Baud rate for the default hardware serial port
@@ -92,14 +91,14 @@ temperature_control.hotend.designator        T                #
 switch.misc.enable                           true             #
 switch.misc.input_on_command                 M42              #
 switch.misc.input_off_command                M43              #
-switch.misc.output_pin                       2.7              #
+switch.misc.output_pin                       2.6              #
 switch.misc.output_type                      digital          # just an on or off pin
 
 # Air solenoid
 switch.misc2.enable                           true             #
 switch.misc2.input_on_command                 M44              #
 switch.misc2.input_off_command                M45              #
-switch.misc2.output_pin                       2.5              #
+switch.misc2.output_pin                       2.4              #
 switch.misc2.output_type                      digital          # just an on or off pin
 
 alpha_max_travel                             500              #

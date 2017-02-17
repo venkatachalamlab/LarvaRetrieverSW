@@ -113,19 +113,27 @@ def pickLarva(source, dest, instar):
     robot.sendSyncCmd("G01 F8000\n")
     robot.sendSyncCmd("G01 X{0} Y{1}\n".format(source[0], source[1]))
     robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]))
-    robot.sendSyncCmd("G04 P100\n")
+#    robot.sendSyncCmd("G04 P100\n")
     robot.sendSyncCmd("M42\n")
     robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]+0.1))
-    robot.sendSyncCmd("G04 P250\n")
-    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(ZTravel))
-    robot.sendSyncCmd("G01 F8000 X{0} Y{1}\n".format(dest[0], dest[1]))
-    robot.sendSyncCmd("G01 F3000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]))
+    robot.sendSyncCmd("G04 P150\n")
+    robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel))
+    robot.sendSyncCmd("G01 X{0} Y{1}\n".format(dest[0], dest[1]))
+    robot.sendSyncCmd("G01 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]))
     robot.sendSyncCmd("M43\n") # Vacuum off
     robot.sendSyncCmd("M44\n") # Air on
-    robot.sendSyncCmd("G04 P10\n") # Pause (5ms)
-    robot.sendSyncCmd("G01 F3000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+2))
+#    robot.sendSyncCmd("G01 F400 X{0} Y{1}\n".format(dest[0]+2, dest[1]+2))
+#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+1))
+    robot.sendSyncCmd("G04 P50\n")
     robot.sendSyncCmd("M45\n") # Air off
-    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(ZTravel)) # Return to Z travel height
+    robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel)) # Return to Z travel height
+
+
+#    robot.sendSyncCmd("M44\n") # Air on
+#    robot.sendSyncCmd("G04 P15\n") # Pause (5ms)
+#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+1))
+#    robot.sendSyncCmd("M45\n") # Air off
+#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(ZTravel)) # Return to Z travel height
 
 def parseImage(img):
     larvaList = []

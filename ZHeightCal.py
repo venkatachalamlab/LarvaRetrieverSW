@@ -98,3 +98,4 @@ print "Save new Z heights to file (", zHeightMapFile, ")? [Y/n]"
 t = raw_input()
 if (t == 'y') or (t == "Y") or (t == ""):
     np.save(zHeightMapFile, measuredHeights)
+    print "Saved."
