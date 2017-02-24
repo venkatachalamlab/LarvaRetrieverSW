@@ -109,31 +109,24 @@ def pickLarva(source, dest, instar):
     assert (instar == 1 or instar == 2 or instar == 3), "instar should be 1, 2 or 3"
 
     zHeightAtLarva = getZHeight(source, a, b, c, d)
+    print "zHeightAtLarva:", zHeightAtLarva
     zDropoffHeight = getZHeight(dest, a, b, c, d)
-    robot.sendSyncCmd("G01 F8000\n")
+    print "zDropoffHeight:", zDropoffHeight
+    robot.sendSyncCmd("G01 F10000\n")
     robot.sendSyncCmd("G01 X{0} Y{1}\n".format(source[0], source[1]))
-    robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]))
-#    robot.sendSyncCmd("G04 P100\n")
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]))
     robot.sendSyncCmd("M42\n")
-    robot.sendSyncCmd("G01 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]+0.1))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(zHeightAtLarva+ZPickups[instar-1]+0.1))
     robot.sendSyncCmd("G04 P150\n")
-    robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel))
-    robot.sendSyncCmd("G01 X{0} Y{1}\n".format(dest[0], dest[1]))
-    robot.sendSyncCmd("G01 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(ZTravel))
+    robot.sendSyncCmd("G01 F10000 X{0} Y{1}\n".format(dest[0], dest[1]))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]))
     robot.sendSyncCmd("M43\n") # Vacuum off
     robot.sendSyncCmd("M44\n") # Air on
-#    robot.sendSyncCmd("G01 F400 X{0} Y{1}\n".format(dest[0]+2, dest[1]+2))
-#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+1))
-    robot.sendSyncCmd("G04 P50\n")
+    robot.sendSyncCmd("G04 P50\n") # Pause for 50 ms
     robot.sendSyncCmd("M45\n") # Air off
-    robot.sendSyncCmd("G01 Z{0}\n".format(ZTravel)) # Return to Z travel height
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(ZTravel)) # Return to Z travel height
 
-
-#    robot.sendSyncCmd("M44\n") # Air on
-#    robot.sendSyncCmd("G04 P15\n") # Pause (5ms)
-#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(zDropoffHeight+ZDropoffs[instar-1]+1))
-#    robot.sendSyncCmd("M45\n") # Air off
-#    robot.sendSyncCmd("G01 F8000 Z{0}\n".format(ZTravel)) # Return to Z travel height
 
 def parseImage(img):
     larvaList = []
@@ -155,6 +148,7 @@ def parseImage(img):
                 #print " mmnts['m00']:", mmnts['m00'], " at ", (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00'])
                 if ( larvaRanges[instar-1][0] < mmnts['m00'] < larvaRanges[instar-1][1] ):
                     # Center of contour is m10/m00, m01/m00
+                    print "Larva size:", mmnts['m00']
                     larvaList.append( np.array([ (mmnts['m10'] / mmnts['m00'] ), ( mmnts['m01'] / mmnts['m00']) ], dtype=np.int16) )
 
     return larvaList
@@ -245,7 +239,7 @@ while True:
                         else:
                             pickLarva(larva, destListRobot[destCount], instar)
                         destCount += 1
-                    robot.sendSyncCmd("G01 F12000 X2 Y2\n")
+                    robot.sendSyncCmd("G01 F10000 X0 Y0\n")
                 prevTime = os.path.getmtime(imageFile)
 
         time.sleep(0.25)

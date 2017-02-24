@@ -2,6 +2,20 @@
 # Copyright 2016/2017, FlySorter LLC. See License file for more details.
 #
 
+# IMPORTANT:
+# There are different versions of the SmoothieBoard hardware, and some have different
+# motor driver chips. For example, the Smoothie 1.0 hardware uses Allegro A4982 chips,
+# which max out at 1/16 microstepping. The Smoothie 1.1 boards use A5984 chips, and are
+# set up to use 1/32 microstepping by default.
+#
+# This config relies on the board using 1/8 microstepping. Find out what chips your board uses,
+# and refer to the appropriate Allegro datasheet to see what the correct MS1, MS2 and optionally, MS3
+# jumper settings are. Then, solder or cut the jumpers on the Smoothie as appropriate.
+#
+# You *can* change the *_steps_per_mm values in the config to get the robot to travel the correct
+# distance on command, but finer microstepping (like 1/16 or 1/32) will result in lower torque
+# from the motors.
+
 # NOTE Lines must not exceed 132 characters
 # Robot module configurations : general handling of movement G-codes and slicing into moves
 default_feed_rate                            5000             # Default rate ( mm/minute ) for G1/G2/G3 moves
@@ -13,13 +27,13 @@ mm_max_arc_error                             0.01             # these segments. 
                                                               # coordinates robots ).
 
 # Arm solution configuration : Cartesian robot. Translates mm positions into stepper positions
-# 20 tooth pulley, 2mm belt pitch, 400 steps per rotation, 1/16 microstepping
-# Theoretical steps/mm => 160. But practically, after directing the robot to move
+# 20 tooth pulley, 2mm belt pitch, 400 steps per rotation, 1/8 microstepping
+# Theoretical steps/mm => 80. But practically, after directing the robot to move
 # 100 in X and Y and measuring distance, needs adjustment. Robot traveled too far, so...
-alpha_steps_per_mm                           156.7               # Steps per mm for alpha stepper
-beta_steps_per_mm                            157.0               # Steps per mm for beta stepper
-# 1/10.4" per revolution, 200 steps, 1/16 microstepping => 1/2.4423 rev/mm * 200 steps / rev *16 microsteps/step = 1310.236 steps/mm
-gamma_steps_per_mm                           1310.236          # Steps per mm for gamma stepper
+alpha_steps_per_mm                           78.75               # Steps per mm for alpha stepper
+beta_steps_per_mm                            78.75               # Steps per mm for beta stepper
+# 1/10.4" per revolution, 200 steps, 1/16 microstepping => 1/2.4423 rev/mm * 200 steps / rev * 8 microsteps/step = 655.120
+gamma_steps_per_mm                           655.120             # Steps per mm for gamma stepper
 
 # Planner module configuration : Look-ahead and acceleration configuration
 planner_queue_size                           32               # DO NOT CHANGE THIS UNLESS YOU KNOW EXACTLY WHAT YOU ARE DOING
@@ -36,28 +50,31 @@ microseconds_per_step_pulse                  1                # Duration of step
 base_stepping_frequency                      100000           # Base frequency for stepping, higher gives smoother movement
 
 # Cartesian axis speed limits
-x_axis_max_speed                             20000            # mm/min
-y_axis_max_speed                             20000            # mm/min
-z_axis_max_speed                             1000             # mm/min
+x_axis_max_speed                             15000            # mm/min
+y_axis_max_speed                             15000            # mm/min
+z_axis_max_speed                             3000             # mm/min
 
+# X motor hooked up to M1 pins
 # Stepper module pins ( ports, and pin numbers, appending "!" to the number will invert a pin )
 alpha_step_pin                               2.0              # Pin for alpha stepper step signal
 alpha_dir_pin                                0.5              # Pin for alpha stepper direction
 alpha_en_pin                                 0.4              # Pin for alpha enable pin
-alpha_current                                1.25              # X stepper motor current
-alpha_max_rate                               30000.0          # mm/min
+alpha_current                                1.65             # X stepper motor current
+alpha_max_rate                               15000.0          # mm/min
 
+# Y motor hooked up to M2 pins
 beta_step_pin                                2.1              # Pin for beta stepper step signal
 beta_dir_pin                                 0.11             # Pin for beta stepper direction
 beta_en_pin                                  0.10             # Pin for beta enable
-beta_current                                 1.25              # Y stepper motor current
-beta_max_rate                                30000.0          # mm/min
+beta_current                                 1.95              # Y stepper motor current
+beta_max_rate                                15000.0          # mm/min
 
+# Z motor hooked up to M3 pins
 gamma_step_pin                               2.2              # Pin for gamma stepper step signal
 gamma_dir_pin                                0.20             # Pin for gamma stepper direction
 gamma_en_pin                                 0.19             # Pin for gamma enable
-gamma_current                                0.40             # Z stepper motor current
-gamma_max_rate                               5000.0          # mm/min
+gamma_current                                0.60             # Z stepper motor current
+gamma_max_rate                               3000.0          # mm/min
 
 # Serial communications configuration ( baud rate default to 9600 if undefined )
 uart0.baud_rate                              115200           # Baud rate for the default hardware serial port
@@ -71,8 +88,11 @@ kill_button_pin                              2.12             # kill button pin.
 #msd_disable                                 false            # disable the MSD (USB SDCARD) when set to true (needs special binary)
 #dfu_enable                                  false            # for linux developers, set to true to enable DFU
 
+# Need this to enable the current control for the motors
 currentcontrol_module_enable                 true
 
+
+# We have a pressure sensor set up as a "temperature" input. Note the "nc" value for the heater_pin -- this is a readonly thermistor.
 # Hotend temperature control configuration
 temperature_control.hotend.enable            true             # Whether to activate this ( "hotend" ) module at all.
                                                               # All configuration is ignored if false.
@@ -87,38 +107,44 @@ temperature_control.hotend.designator        T                #
 #temperature_control.hotend.min_temp         0                # Set minimum temperature - Will prevent heating below if set
 
 
-# Vacuum solenoid
+# Vacuum solenoid connected to first small MOSFET (Q8)
+# Don't forget to add a flyback diode if it's not included on the board
 switch.misc.enable                           true             #
 switch.misc.input_on_command                 M42              #
 switch.misc.input_off_command                M43              #
 switch.misc.output_pin                       2.6              #
 switch.misc.output_type                      digital          # just an on or off pin
 
-# Air solenoid
+# Air solenoid connected to second small MOSFET (Q9)
+# Don't forget to add a flyback diode if it's not included on the board
 switch.misc2.enable                           true             #
 switch.misc2.input_on_command                 M44              #
 switch.misc2.input_off_command                M45              #
 switch.misc2.output_pin                       2.4              #
 switch.misc2.output_type                      digital          # just an on or off pin
 
-alpha_max_travel                             500              #
+alpha_max_travel                             500              # How far it travels looking for the endstop before giving up
 beta_max_travel                              500              #
 gamma_max_travel                             500              #
 
 # Endstops
 endstops_enable                              true             # the endstop module is enabled by default and can be disabled here
+
+# The X min endstop is a photogate.
 alpha_min_endstop                            2.11^            # (previously 1.24^) add a ! to invert if endstop is NO connected to ground
 alpha_max_endstop                            nc				  # (previously 1.25^) NOTE set to nc if this is not installed
 alpha_homing_direction                       home_to_min      # or set to home_to_max and set alpha_max
 alpha_min                                    -3                # this gets loaded after homing when home_to_min is set
 alpha_max                                    200              # this gets loaded after homing when home_to_max is set
 
+# The Y min endstop is a physical switch mounted to the X/Y frame.
 beta_min_endstop                             1.26^            # 1.26^
 beta_max_endstop                             nc               # 1.27^
 beta_homing_direction                        home_to_min      #
 beta_min                                     -3               #
 beta_max                                     200              #
 
+# The Z min endstop is a microswitch mounted to the Z assembly.
 gamma_min_endstop                            nc            # 1.28^
 gamma_max_endstop                            1.28^            # 1.29^
 gamma_homing_direction                       home_to_max      #

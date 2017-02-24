@@ -3,18 +3,19 @@
 import fsSerial
 import numpy as np
 import cv2
+import time
 
 from LPConstants import *
 
 # Outline of camera calibration steps:
 # 0. Use pylon viewer to set exposure, gain, etc.
-# 1. Direct robot to move to 2 points.
-# 2. At each point, direct user to attach corner
-#    of printed calibration pattern
-# 3. Capture image with camera
-# 4. Detect location of calibration points within image.
-# 5. Create homography transformation from points.
-# 6. Output homography matrix to config file.
+# 1. Direct robot to move to 4 points.
+# 2. At each point, direct user to attach calibration disc
+# 3. When pressure sensor detects disc attached, drop it on agar bed.
+# 4. Capture image with camera
+# 5. Detect location of calibration points within image.
+# 6. Create homography transformation from points.
+# 7. Output homography matrix to config file.
 
 robot = fsSerial.findSmoothie()
 
@@ -22,11 +23,8 @@ if robot is None:
     print "Couldn't find SmoothieBoard. Exiting."
     exit()
 
-cornerPoints = [ np.array([15.0, 5.0]),
-               np.array([195.0, 205.0]) ]
-
-circlePointsRobot = np.array( [[45.0, 15.0],
-                              [170.0, 25.0],
+circlePointsRobot = np.array( [[45.0, 25.0],
+                              [170.0, 35.0],
                               [185.0, 175.0],
                               [30.0, 190.0]])
 
@@ -35,27 +33,43 @@ colorList = [ (255, 0, 0),
               (0, 0, 255),
               (255, 255, 0) ]
 
-zHeight = ZExtents+7.5
-transitSpeed = 4000
+zHeight = -15.
+transitSpeed = 6000
 
 # Home robot, set to absolute coords
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
 
-# Move to first corner of calibration image
-robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[0][0], cornerPoints[0][1]))
-robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
-robot.sendSyncCmd("G04 P100\n")
-print "Place corner #1 of calibration pattern under tip, and press [enter] to continue."
-t = raw_input()
-
-# Move to second corner of calibration image
-robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight+10))
-robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, cornerPoints[1][0], cornerPoints[1][1]))
-robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, zHeight))
-robot.sendSyncCmd("G04 P100\n")
-print "Place corner #2 of calibration pattern under tip, and press [enter] to continue."
-t = raw_input()
+for pt in circlePointsRobot:
+    robot.sendSyncCmd("G01 F{0}\n".format(transitSpeed))
+    robot.sendSyncCmd("G01 X{0} Y{1}\n".format(pt[0], pt[1]))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(-2))
+    robot.sendSyncCmd("M42\n")
+    print "Attach disc."
+    count=0
+    pc=0
+    p = 35.
+    while ( count < 100 ) and ( pc < 2 ):
+        pString = robot.sendCmdGetReply("M105\n")
+        p = float(pString.split(' ')[1].split(':')[1])
+        if ( p >= 50 ):
+            print "Pressure:", p
+            pc += 1
+        time.sleep(0.1)
+        count += 1
+    if ( count >= 100 ):
+        print "Timed out."
+        robot.sendSyncCmd("M43\n")
+    else:
+        time.sleep(2)
+        robot.sendSyncCmd("G01 Z{0}\n".format(zHeight))
+        robot.sendSyncCmd("G04 P500\n")
+        robot.sendSyncCmd("M43\n")
+        robot.sendSyncCmd("M44\n")
+        robot.sendSyncCmd("G01 Z{0}\n".format(zHeight+0.1))
+        robot.sendSyncCmd("G04 P50\n")
+        robot.sendSyncCmd("M45\n")
+        robot.sendSyncCmd("G01 Z{0}\n".format(-2))
 
 # Now image has been placed. Get robot out of the camera's view
 robot.sendSyncCmd("G28\n")
@@ -65,6 +79,7 @@ robot.sendSyncCmd("M84\n")
 robot.close()
 
 print "Robot closed. Opening camera."
+
 
 # Open the camera
 # May need to edit the index to match your system, since it depends
@@ -87,8 +102,8 @@ webcam.release()
 # Find circles
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 blur = cv2.medianBlur(gray, 5)
-circles = cv2.HoughCircles(blur, cv2.cv.CV_HOUGH_GRADIENT, 1.4, 100,
-                           minRadius=25, maxRadius=75)
+circles = cv2.HoughCircles(blur, cv2.cv.CV_HOUGH_GRADIENT, 1.3, 100,
+                           minRadius=25, maxRadius=150)
 
 circlePointsImage = np.zeros((4, 2))
 
@@ -123,12 +138,17 @@ cv2.waitKey()
 
 cv2.destroyAllWindows()
 
-# At this point, we should have our two arrays, and can create a homography
-h, status = cv2.findHomography(circlePointsImage, circlePointsRobot)
-print h
+if ( len(icircles) == 4 ):
+    # At this point, we should have our two arrays, and can create a homography
+    h, status = cv2.findHomography(circlePointsImage, circlePointsRobot)
+    print "Calculated homography:"
+    print h
 
-print "Save new homography to file (", homographyFile, ")? [Y/n]"
-t = raw_input()
-if (t == 'y') or (t == "Y") or (t == ""):
-    np.save(homographyFile, h)
-    print "Saved."
+    print "Save new homography to file (", homographyFile, ")? [Y/n]"
+    t = raw_input()
+    if (t == 'y') or (t == "Y") or (t == ""):
+        np.save(homographyFile, h)
+        print "Saved."
+
+else:
+    print len(icircles), "circles found. Need 4 for homography matrix."

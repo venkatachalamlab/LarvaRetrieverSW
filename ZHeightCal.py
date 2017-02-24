@@ -21,14 +21,15 @@ from LPConstants import *
 # Configuration parameters
 
 testPoints = np.array([ [40., 10.],
-               [230., 10.],
-               [230., 200.],
-               [40., 200.0]], float)
+               [200., 10.],
+               [200., 200.],
+               [40., 180.0]], float)
 
 startZHeight = -15.0
 zIncrement = 0.1
-transitSpeed = 3000
 zHeightMapFile = "zHeightMap.npy"
+
+transitSpeed = 6000
 
 robot = fsSerial.findSmoothie()
 
@@ -43,6 +44,7 @@ pString = robot.sendCmdGetReply("M105\n")
 p = float(pString.split(' ')[1].split(':')[1])
 if p < minVacReading:
     print "Low pressure reading (", p, "). Is the pump on/stopcock open?"
+    print "Min reading should be:", minVacReading
     robot.sendSyncCmd("M43\n")
     robot.close()
     exit()
@@ -54,6 +56,7 @@ print "Vac reading:", p, "Setting threshold to:", surfaceThreshold
 
 robot.sendSyncCmd("G28\n")
 robot.sendSyncCmd("G90\n")
+robot.sendSyncCmd("G01 F{0}\n".format(transitSpeed))
 
 measuredHeights = np.zeros((len(testPoints), 3))
 
@@ -62,10 +65,10 @@ for x in range(len(testPoints)):
     print "Point: X{0} Y{1}".format(pt[0], pt[1])
     currentZ = startZHeight
     seek = True
-    robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(2*transitSpeed, pt[0], pt[1]))
+    robot.sendSyncCmd("G01 F{0} X{1} Y{2}\n".format(transitSpeed, pt[0], pt[1]))
     while seek is True:
         print "-- ZHeight:", currentZ
-        robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, currentZ))
+        robot.sendSyncCmd("G01 F2000 Z{0}\n".format(currentZ))
         robot.sendSyncCmd("G04 P250\n")
         pString = robot.sendCmdGetReply("M105\n")
         p = float(pString.split(' ')[1].split(':')[1])
@@ -83,7 +86,7 @@ for x in range(len(testPoints)):
                 print "No surface found at X{0} Y{1}".format(pt[0], pt[1])
                 measuredHeights[x] = np.array([pt[0], pt[1], currentZ+zIncrement])
                 seek = False
-    robot.sendSyncCmd("G01 F{0} Z{1}\n".format(transitSpeed, startZHeight))
+    robot.sendSyncCmd("G01 F2000 Z{0}\n".format(startZHeight))
 
 robot.sendSyncCmd("M43\n")
 robot.sendSyncCmd("G28\n")
