@@ -84,7 +84,7 @@ print "Robot closed. Opening camera."
 # Open the camera
 # May need to edit the index to match your system, since it depends
 # on how many cameras there are and in what order they enumerate.
-webcam = cv2.VideoCapture(2)
+webcam = cv2.VideoCapture(0)
 
 print "Camera open, setting params."
 
@@ -101,9 +101,11 @@ webcam.release()
 
 # Find circles
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-blur = cv2.medianBlur(gray, 5)
-circles = cv2.HoughCircles(blur, cv2.cv.CV_HOUGH_GRADIENT, 1.3, 100,
-                           minRadius=25, maxRadius=150)
+blur = cv2.GaussianBlur(gray, (0, 0), 1.0)
+
+circles = cv2.HoughCircles(blur, cv2.cv.CV_HOUGH_GRADIENT, dp=1.0, minDist=100,
+                           param1=600, param2=40,
+                           minRadius=100, maxRadius=150)
 
 circlePointsImage = np.zeros((4, 2))
 
