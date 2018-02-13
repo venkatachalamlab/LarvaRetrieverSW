@@ -12,9 +12,13 @@ Requires:
 
 Usage:
 
-Test connection to robot using Pronterface. The port the board is using can be checked in the Device Manager and the baudrate is 19,200.  Should be able to home robot, then drive in X/Y/Z (positive directions in X/Y to start, negative in Z). If the robot gives "print paused @__" use command M999- ALWAYS RE-HOME ROBOT AFTER THIS COMMAND
+Test connection to robot using Pronterface. The port the board is using can be checked in the Device Manager and the baudrate is 19,200.  Should be able to home robot, then drive in X/Y/Z (positive directions in X/Y to start, negative in Z). 
 
-Should also be able to open solenoid valves with M42 and M44 commands (type into Pronterface). M43 / M45 close valves. M105 reads the pressure sensor. Pressure is controlled by four valves, the air and vacuum valves directly on the lab wall, and the two small valves on robot (one labeled AIR, one un-labeled- vacuum). 
+- If the robot gives "print paused @__" use command M999- ALWAYS RE-HOME ROBOT AFTER THIS COMMAND
+
+Should also be able to open solenoid valves with M42 and M44 commands (type into Pronterface). M43 / M45 close valves. M105 reads the pressure sensor. 
+
+- Pressure is controlled by four valves, the air and vacuum valves directly on the lab wall, and the two small valves on robot (one labeled AIR, one un-labeled- vacuum). 
 
 Can add buttons in Pronterface for those actions. This can be done by using the plus button on the bottom of the grid. 
 
